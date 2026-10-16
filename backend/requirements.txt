@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+huggingface_hub
+elevenlabs
+tabpfn
+sentry-sdk
+python-dotenv
+python-multipart
+pytest
+groq
