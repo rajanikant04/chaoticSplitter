@@ -6,9 +6,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    # Hugging Face (Gemma Models)
-    HF_TOKEN: str = os.getenv("HF_TOKEN", "")
-    GEMMA_MODEL: str = os.getenv("GEMMA_MODEL", "google/gemma-2-9b-it")
+    # Ollama Cloud & Host
+    OLLAMA_API_KEY: str = os.getenv("OLLAMA_API_KEY", "")
+    OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", os.getenv("OLLAMA_BASE_URL", "https://ollama.com"))
+    OLLAMA_BASE_URL: str = OLLAMA_HOST  # backward-compatibility alias
+    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "gemma4:31b")
+    OCR_MODEL: str = os.getenv("OCR_MODEL", "gemma4:31b")
 
     # ElevenLabs (Scribe STT + Voice TTS)
     ELEVENLABS_API_KEY: str = os.getenv("ELEVENLABS_API_KEY", "")

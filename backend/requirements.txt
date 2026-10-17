@@ -1,11 +1,9 @@
 fastapi
 uvicorn
 pydantic
-huggingface_hub
+requests
 elevenlabs
-tabpfn
-sentry-sdk
 python-dotenv
 python-multipart
-pytest
-groq
+tabpfn
+sentry-sdk

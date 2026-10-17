@@ -3,10 +3,12 @@ import { Navbar } from './components/navbar';
 import { Footer } from './components/footer';
 import { GroupSetup } from './components/groupSetup';
 import { SnapReceipt } from './components/snapReceipt';
+import { ReceiptPreviewPanel } from './components/receiptPreviewPanel';
 import { ExplainSplit } from './components/explainSplit';
 import { VerifyItems } from './components/verifyItems';
 import { SettlePay } from './components/settlePay';
 import { pingBackendService, type ConnectionStatus } from './utils/checkConnection';
+import type { ReceiptData, VoiceSplitPlan } from './services/api';
 
 export function App() {
   const [backendStatus, setBackendStatus] = useState<ConnectionStatus>('checking');
@@ -17,7 +19,10 @@ export function App() {
   const [groupName, setGroupName] = useState<string>('');
   const [members, setMembers] = useState<string[]>([]);
 
-  // 4 Steps workflow state
+  // Receipt & Workflow state
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptImageUrl, setReceiptImageUrl] = useState<string | null>(null);
+  const [splitPlan, setSplitPlan] = useState<VoiceSplitPlan | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   useEffect(() => {
@@ -36,6 +41,15 @@ export function App() {
     setMembers(groupMembers);
     setIsGroupConfigured(true);
     setCurrentStep(1);
+  };
+
+  const handleReceiptProcessed = (data: any, imageUrl?: string) => {
+    setReceiptData(data);
+    if (imageUrl) {
+      setReceiptImageUrl(imageUrl);
+    }
+    // Automatically advance to Step 2: Explain Split once receipt items are extracted
+    setCurrentStep(2);
   };
 
   const steps = [
@@ -124,9 +138,59 @@ export function App() {
             ))}
           </nav>
 
+          {/* Persistent Receipt Reference Preview for Steps 2, 3, 4 */}
+          {currentStep > 1 && receiptImageUrl && (
+            <ReceiptPreviewPanel
+              imageUrl={receiptImageUrl}
+              receiptData={receiptData}
+              onRetake={() => setCurrentStep(1)}
+            />
+          )}
+
           {/* Active Step Modular Component */}
-          {currentStep === 1 && <SnapReceipt groupName={groupName} members={members} />}
-          {currentStep === 2 && <ExplainSplit groupName={groupName} members={members} />}
+          {currentStep === 1 && (
+            <SnapReceipt
+              groupName={groupName}
+              members={members}
+              initialImageUrl={receiptImageUrl}
+              onImageChange={(url) => setReceiptImageUrl(url)}
+              onReceiptProcessed={handleReceiptProcessed}
+            />
+          )}
+          {currentStep === 2 && (
+            receiptData ? (
+              <ExplainSplit
+                groupName={groupName}
+                members={members}
+                receiptData={receiptData}
+                onSplitPlanGenerated={(plan) => {
+                  setSplitPlan(plan);
+                  setCurrentStep(3);
+                }}
+              />
+            ) : (
+              <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🧾</div>
+                <p style={{ color: '#f59e0b', margin: 0, fontWeight: 600 }}>
+                  Please snap or upload a receipt photo first in Step 1.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  style={{
+                    marginTop: '1.2rem',
+                    padding: '0.7em 1.4em',
+                    backgroundColor: '#646cff',
+                    color: '#fff',
+                    border: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  ← Go to Step 1: Snap Receipt
+                </button>
+              </div>
+            )
+          )}
           {currentStep === 3 && <VerifyItems groupName={groupName} members={members} />}
           {currentStep === 4 && <SettlePay groupName={groupName} members={members} />}
         </>

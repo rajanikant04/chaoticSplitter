@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { parseGroupAudio } from '../services/api';
 
 interface GroupSetupProps {
   onGroupConfirmed: (groupName: string, members: string[]) => void;
@@ -9,6 +10,13 @@ export function GroupSetup({ onGroupConfirmed }: GroupSetupProps) {
   const [memberCount, setMemberCount] = useState<number>(3);
   const [memberNames, setMemberNames] = useState<string[]>(['Alice', 'Bob', 'Charlie']);
   const [error, setError] = useState<string>('');
+
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const [voiceNotice, setVoiceNotice] = useState<string>('');
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const handleCountChange = (count: number) => {
     const validCount = Math.max(2, Math.min(20, count || 2));
@@ -35,6 +43,102 @@ export function GroupSetup({ onGroupConfirmed }: GroupSetupProps) {
     });
   };
 
+  const handleSendAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    setVoiceNotice('⏳ Transcribing audio with ElevenLabs & extracting with Gemma 2...');
+    setError('');
+
+    try {
+      const data = await parseGroupAudio(audioBlob);
+      if (data) {
+        setVoiceNotice(`🎙️ Heard: "${data.transcript}"`);
+
+        // Set group name from Gemma JSON response
+        if (data.group_name) {
+          setGroupName(data.group_name);
+        }
+
+        // Set members from Gemma JSON response
+        if (data.members && data.members.length > 0) {
+          const count = Math.min(20, Math.max(2, data.members.length));
+          setMemberCount(count);
+          setMemberNames(data.members.slice(0, count));
+        }
+      }
+    } catch (err: any) {
+      setVoiceNotice('');
+      setError(err?.response?.data?.detail || err?.message || 'Failed to process group audio.');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const startRecording = async () => {
+    setError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Pick best supported MIME type across Chrome, Firefox, Safari
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        ''
+      ];
+      const selectedMime = mimeTypes.find(type => !type || MediaRecorder.isTypeSupported(type)) || '';
+      const options = selectedMime ? { mimeType: selectedMime } : {};
+
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const actualType = selectedMime || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualType });
+        
+        // Stop all tracks to release the microphone hardware
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (audioBlob.size === 0) {
+          setError('No audio captured. Please speak into your microphone and try again.');
+          return;
+        }
+
+        await handleSendAudio(audioBlob);
+      };
+
+      // Request data in chunks every 250ms so ondataavailable fires reliably
+      mediaRecorder.start(250);
+      setIsListening(true);
+      setVoiceNotice('🔴 Listening... Say group & friends (e.g. "Goa trip with Alice Bob and Charlie")');
+    } catch (err: any) {
+      setError('Microphone access denied or audio device not found.');
+      setIsListening(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isListening) {
+      mediaRecorderRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  const toggleMic = () => {
+    if (isListening) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanGroupName = groupName.trim() || 'My Group';
@@ -50,18 +154,6 @@ export function GroupSetup({ onGroupConfirmed }: GroupSetupProps) {
 
     setError('');
     onGroupConfirmed(cleanGroupName, cleanMembers);
-  };
-
-  const [isListening, setIsListening] = useState<boolean>(false);
-  const [voiceNotice, setVoiceNotice] = useState<string>('');
-
-  const toggleMic = () => {
-    setIsListening((prev) => !prev);
-    if (!isListening) {
-      setVoiceNotice('Listening... (Say group name and friends, e.g. "Goa trip with Alice Bob and Charlie")');
-    } else {
-      setVoiceNotice('');
-    }
   };
 
   return (
@@ -82,7 +174,8 @@ export function GroupSetup({ onGroupConfirmed }: GroupSetupProps) {
         <button
           type="button"
           onClick={toggleMic}
-          title={isListening ? 'Stop listening' : 'Speak group details (ElevenLabs Voice)'}
+          disabled={isTranscribing}
+          title={isListening ? 'Stop recording' : 'Speak group details (ElevenLabs Voice)'}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -92,11 +185,16 @@ export function GroupSetup({ onGroupConfirmed }: GroupSetupProps) {
             border: isListening ? '1px solid #ef4444' : '1px solid #444',
             backgroundColor: isListening ? 'rgba(239, 68, 68, 0.15)' : '#1f1f1f',
             color: isListening ? '#f87171' : '#fff',
-            cursor: 'pointer',
+            cursor: isTranscribing ? 'not-allowed' : 'pointer',
+            opacity: isTranscribing ? 0.6 : 1,
           }}
         >
-          <span style={{ fontSize: '1.1em' }}>{isListening ? '🛑' : '🎙️'}</span>
-          <span>{isListening ? 'Listening...' : 'Mic'}</span>
+          <span style={{ fontSize: '1.1em' }}>
+            {isTranscribing ? '⏳' : isListening ? '🛑' : '🎙️'}
+          </span>
+          <span>
+            {isTranscribing ? 'Transcribing...' : isListening ? 'Stop' : 'Mic'}
+          </span>
         </button>
       </div>
 

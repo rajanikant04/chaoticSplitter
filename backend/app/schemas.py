@@ -27,6 +27,8 @@ class ItemShare(BaseModel):
 class SplitPlanRequest(BaseModel):
     receipt: ReceiptSchema
     instructions: str = Field(description="Conversational splitting instructions from voice transcript or direct text typing")
+    members: List[str] = Field(default_factory=list, description="List of participant names in the group")
+    unclaimed_rule: str = Field(default="split_all", description="Unmentioned items rule: 'split_all' (default) or 'payer_only'")
 
 class VoiceSplitPlan(BaseModel):
     participants: List[str] = Field(description="List of all unique participant names identified")
@@ -63,6 +65,12 @@ class SettlementSummary(BaseModel):
     tabpfn_anomaly_alert: Optional[str] = Field(default=None, description="TabPFN outlier warning if detected")
     suggested_tip_percentage: Optional[float] = Field(default=None, description="TabPFN recommended fair tip percentage")
 
+# --- Group Setup Audio Models ---
+class GroupParseResponse(BaseModel):
+    group_name: str = Field(description="Parsed group or event name")
+    members: List[str] = Field(description="Parsed list of friend names")
+    transcript: str = Field(description="Raw audio transcript from STT")
+
 # --- Transcribe & Audio Feedback Models ---
 class VoiceTranscribeResponse(BaseModel):
     transcript: str
@@ -72,3 +80,4 @@ class VoiceTranscribeResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str = "ok"
     version: str = "1.0.0"
+

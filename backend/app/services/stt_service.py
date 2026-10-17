@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from app.config import Settings
 import os
 import io
@@ -27,7 +28,10 @@ def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "memo.wav") -> Vo
         client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
     except Exception as e:
         logger.error(f"Failed to initialize ElevenLabs client: {e}")
-        raise RuntimeError(f"ElevenLabs client initialization failed: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to initialize ElevenLabs client"
+        )
 
     try:
         audio_stream = io.BytesIO(audio_bytes)
