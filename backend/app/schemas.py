@@ -51,6 +51,7 @@ class ParticipantShare(BaseModel):
     discount_share: float = Field(description="Proportional share of discounts (subtracted)")
     final_total: float = Field(description="Final net amount owed by this person")
     upi_link: Optional[str] = Field(default=None, description="1-Tap UPI deep link (upi://pay?...)")
+    qr_code_data_url: Optional[str] = Field(default=None, description="Base64 Data URL for UPI QR code")
     items_consumed: List[str] = Field(default_factory=list, description="List of item names consumed with fractions")
 
 class SettlementSummary(BaseModel):

@@ -20,8 +20,8 @@ Group Members:
 User Instructions:
 "{instructions}"
 
-Unmentioned Items Policy:
-{unclaimed_rule} (Default: If an item on the receipt is not mentioned, split it equally among all participants with weight 1.0)
+Policy for Unmentioned Dishes:
+If a dish on the receipt is not mentioned in the user's instructions, always split it equally among all participants with weight 1.0.
 
 Strict Requirements:
 1. Output ONLY a valid JSON object matching the schema below. No markdown fences or conversational explanations.
@@ -32,11 +32,11 @@ Strict Requirements:
     {{"item_id": 1, "person": "Member1", "weight": 1.0}},
     {{"item_id": 1, "person": "Member2", "weight": 1.0}}
   ],
-  "unclaimed_rule": "{unclaimed_rule}",
+  "unclaimed_rule": "split_all",
   "reasoning_summary": "1-2 sentence human-readable summary of how the dishes were mapped"
 }}
 3. For every receipt item, allocate to the consumers mentioned. If shared, give equal weight 1.0 to each sharer.
-4. If an item is unmentioned in instructions, allocate to all participants with weight 1.0 under split_all policy.
+4. If an item is unmentioned in instructions, allocate to all participants with weight 1.0.
 5. All participant names must be capitalized and match the group members (or new participants mentioned in instructions).
 6. 'item_id' MUST match the integer ID from the Receipt Items.
 """
@@ -133,15 +133,12 @@ def generate_split_plan_with_gemma(request: SplitPlanRequest) -> VoiceSplitPlan:
                     seen_pairs.add(pair_key)
                     allocations.append(ItemShare(item_id=item_id, person=person, weight=max(0.1, weight)))
 
-        # Ensure all items have at least one allocation (apply unclaimed rule)
+        # Ensure all items have at least one allocation (always split unmentioned equally)
         allocated_item_ids = {a.item_id for a in allocations}
         unallocated_item_ids = valid_item_ids - allocated_item_ids
         for missing_id in unallocated_item_ids:
-            if unclaimed_rule == "payer_only" and participants:
-                allocations.append(ItemShare(item_id=missing_id, person=participants[0], weight=1.0))
-            else:
-                for p in participants:
-                    allocations.append(ItemShare(item_id=missing_id, person=p, weight=1.0))
+            for p in participants:
+                allocations.append(ItemShare(item_id=missing_id, person=p, weight=1.0))
 
         reasoning_summary = str(parsed.get("reasoning_summary", "")).strip() or "Mapped items to consumers based on your instructions."
 

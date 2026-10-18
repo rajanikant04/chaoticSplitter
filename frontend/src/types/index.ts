@@ -27,7 +27,7 @@ export interface ItemShare {
 export interface VoiceSplitPlan {
   participants: string[];
   allocations: ItemShare[];
-  unclaimed_rule: 'split_all' | 'payer_only';
+  unclaimed_rule?: string;
   reasoning_summary: string;
 }
 

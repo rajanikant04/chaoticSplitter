@@ -3,12 +3,15 @@ from app.services.stt_service import transcribe_audio_bytes
 from app.services.gemma_service import extract_group_with_gemma
 from app.services.ocr_service import parse_receipt_image
 from app.services.split_service import generate_split_plan_with_gemma
+from app.math_engine import compute_settlement
 from app.schemas import (
     VoiceTranscribeResponse,
     GroupParseResponse,
     ReceiptSchema,
     SplitPlanRequest,
     VoiceSplitPlan,
+    CalculateSettlementRequest,
+    SettlementSummary,
 )
 
 
@@ -71,3 +74,31 @@ async def create_split_plan(request: SplitPlanRequest):
     using Gemma 4 (gemma4:31b) semantic reasoning.
     """
     return generate_split_plan_with_gemma(request)
+
+@app.post("/api/verify", response_model=SettlementSummary)
+async def verify_and_calculate(request: CalculateSettlementRequest):
+    """
+    Step 3 Verify & Calculate endpoint:
+    Uses the deterministic Python Decimal math engine to compute proportional shares,
+    taxes, tips, discounts, and zero-leakage penny reconciliation from the provided JSON.
+    """
+    return compute_settlement(
+        receipt=request.receipt,
+        plan=request.plan,
+        payer_name=request.payer_name or "Me",
+        payer_upi_vpa=request.payer_upi_vpa,
+    )
+
+@app.post("/api/settle", response_model=SettlementSummary)
+async def settle_and_generate_payments_endpoint(request: CalculateSettlementRequest):
+    """
+    Step 4 Settle & Pay endpoint:
+    Calculates zero-leakage settlement breakdown and generates dynamic UPI QR codes
+    for each non-payer participant to scan and pay the payer directly.
+    """
+    return compute_settlement(
+        receipt=request.receipt,
+        plan=request.plan,
+        payer_name=request.payer_name or "Me",
+        payer_upi_vpa=request.payer_upi_vpa,
+    )

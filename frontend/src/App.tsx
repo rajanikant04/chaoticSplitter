@@ -192,8 +192,29 @@ export function App() {
               </div>
             )
           )}
-          {currentStep === 3 && <VerifyItems groupName={groupName} members={members} />}
-          {currentStep === 4 && <SettlePay groupName={groupName} members={members} />}
+          {currentStep === 3 && (
+            <VerifyItems
+              groupName={groupName}
+              members={members}
+              receiptData={receiptData}
+              splitPlan={splitPlan}
+              onPlanConfirmed={(updatedReceipt, updatedPlan) => {
+                setReceiptData(updatedReceipt);
+                setSplitPlan(updatedPlan);
+                setCurrentStep(4);
+              }}
+              onBackToExplain={() => setCurrentStep(2)}
+            />
+          )}
+          {currentStep === 4 && (
+            <SettlePay
+              groupName={groupName}
+              members={members}
+              receiptData={receiptData}
+              splitPlan={splitPlan}
+              onBackToVerify={() => setCurrentStep(3)}
+            />
+          )}
         </>
       )}
 

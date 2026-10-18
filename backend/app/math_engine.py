@@ -1,6 +1,9 @@
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, List, Tuple
 import urllib.parse
+import io
+import base64
+import qrcode
 
 from app.schemas import (
     ReceiptSchema,
@@ -36,6 +39,25 @@ def generate_upi_link(
     }
     return f"upi://pay?{urllib.parse.urlencode(params)}"
 
+def generate_qr_code_base64(data: str) -> str:
+    """Generates a base64 encoded PNG data URL for a given UPI string."""
+    try:
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=6,
+            border=2,
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return f"data:image/png;base64,{b64_str}"
+    except Exception as e:
+        return ""
+
 def compute_settlement(
     receipt: ReceiptSchema,
     plan: VoiceSplitPlan,
@@ -70,17 +92,12 @@ def compute_settlement(
         allocs = allocations_by_item.get(item.item_id, [])
 
         if not allocs:
-            # Unclaimed item
+            # Unclaimed / unmentioned item: always split equally among all participants
             unclaimed_items.append(f"{item.name} (₹{item.total_price})")
-            if plan.unclaimed_rule == "payer_only" and payer_name in person_subtotals:
-                person_subtotals[payer_name] += item_price
-                person_items[payer_name].append(f"{item.name} (unclaimed, assigned to payer)")
-            else:
-                # Split equally among all participants
-                share_weight = Decimal("1.0") / Decimal(str(len(participants)))
-                for p in participants:
-                    person_subtotals[p] += item_price * share_weight
-                    person_items[p].append(f"{item.name} (shared equally)")
+            share_weight = Decimal("1.0") / Decimal(str(len(participants)))
+            for p in participants:
+                person_subtotals[p] += item_price * share_weight
+                person_items[p].append(f"{item.name} (shared equally)")
         else:
             # Item has explicit allocations
             total_weight = sum(to_decimal(a.weight) for a in allocs)
@@ -157,6 +174,7 @@ def compute_settlement(
         final_amt = float(preliminary_totals[p])
 
         upi_link = None
+        qr_code_data_url = None
         if payer_upi_vpa and p != payer_name and final_amt > 0:
             upi_link = generate_upi_link(
                 payer_vpa=payer_upi_vpa,
@@ -164,6 +182,7 @@ def compute_settlement(
                 amount=final_amt,
                 merchant_name=receipt.merchant_name,
             )
+            qr_code_data_url = generate_qr_code_base64(upi_link)
 
         participant_models.append(
             ParticipantShare(
@@ -174,6 +193,7 @@ def compute_settlement(
                 discount_share=float(shares["discount"]),
                 final_total=final_amt,
                 upi_link=upi_link,
+                qr_code_data_url=qr_code_data_url,
                 items_consumed=person_items[p],
             )
         )

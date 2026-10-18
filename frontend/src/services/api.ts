@@ -69,13 +69,13 @@ export interface SplitPlanRequest {
   receipt: ReceiptData;
   instructions: string;
   members: string[];
-  unclaimed_rule?: 'split_all' | 'payer_only';
+  unclaimed_rule?: string;
 }
 
 export interface VoiceSplitPlan {
   participants: string[];
   allocations: ItemShare[];
-  unclaimed_rule: 'split_all' | 'payer_only';
+  unclaimed_rule?: string;
   reasoning_summary: string;
 }
 
@@ -84,7 +84,7 @@ export async function generateSplitPlan(
   receipt: ReceiptData,
   instructions: string,
   members: string[],
-  unclaimed_rule: 'split_all' | 'payer_only' = 'split_all'
+  unclaimed_rule: string = 'split_all'
 ): Promise<VoiceSplitPlan> {
   const payload: SplitPlanRequest = {
     receipt,
@@ -93,5 +93,54 @@ export async function generateSplitPlan(
     unclaimed_rule,
   };
   const res = await axios.post<VoiceSplitPlan>('/api/split-plan', payload);
+  return res.data;
+}
+
+// --- Stage 3: Settlement & Math Engine Models ---
+export interface ParticipantShare {
+  person: string;
+  subtotal: number;
+  tax_share: number;
+  tip_share: number;
+  discount_share: number;
+  final_total: number;
+  upi_link?: string | null;
+  qr_code_data_url?: string | null;
+  items_consumed: string[];
+}
+
+export interface SettlementSummary {
+  merchant_name: string;
+  currency: string;
+  grand_total: number;
+  sum_of_shares: number;
+  zero_leakage_verified: boolean;
+  rounding_adjustment_cents: number;
+  participants: ParticipantShare[];
+  unclaimed_items: string[];
+  tabpfn_anomaly_alert?: string | null;
+  suggested_tip_percentage?: number | null;
+}
+
+export interface CalculateSettlementRequest {
+  receipt: ReceiptData;
+  plan: VoiceSplitPlan;
+  payer_name?: string;
+  payer_upi_vpa?: string;
+}
+
+// Call POST /api/verify to execute deterministic Python math engine
+export async function verifyAndCalculateSettlement(
+  payload: CalculateSettlementRequest
+): Promise<SettlementSummary> {
+  const res = await axios.post<SettlementSummary>('/api/verify', payload);
+  return res.data;
+}
+
+// Call POST /api/settle to calculate final settlement and generate participant QR codes
+export async function settleAndGeneratePayments(
+  payload: CalculateSettlementRequest
+): Promise<SettlementSummary> {
+  const res = await axios.post<SettlementSummary>('/api/settle', payload);
   return res.data;
 }
