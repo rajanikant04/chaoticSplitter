@@ -20,6 +20,7 @@ Strict Requirements:
 3. Each member name must be capitalized.
 4. Extract ONLY people names, never generic words like "friends", "trip", "and", "everyone".
 5. If at least 2 distinct friends cannot be found, provide meaningful defaults or the names mentioned.
+6. If the user is saying as he is included in the splitting process, then the user is also a member of the group. Use the "User" member name for the user.
 
 Transcript: "{transcript}"
 """
@@ -33,7 +34,7 @@ def extract_group_with_gemma(transcript: str) -> Dict[str, Any]:
         return {"group_name": "Weekend Hangout", "members": ["Alice", "Bob"]}
 
     ollama_api_key = Settings.OLLAMA_API_KEY
-    ollama_host = Settings.OLLAMA_HOST if ollama_api_key else "http://127.0.0.1:11434"
+    ollama_host = Settings.OLLAMA_BASE_URL
     model_name = Settings.OLLAMA_MODEL or "gemma4:31b"
 
     try:

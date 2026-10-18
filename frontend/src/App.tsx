@@ -90,6 +90,7 @@ export function App() {
         <>
           {/* Active Group Header Banner */}
           <div
+            className="mobile-stack"
             style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -102,7 +103,7 @@ export function App() {
               gap: '8px',
             }}
           >
-            <div>
+            <div style={{ wordBreak: 'break-word' }}>
               <span style={{ color: '#888', fontSize: '0.82em' }}>ACTIVE GROUP: </span>
               <strong style={{ color: '#fff', fontSize: '1em' }}>{groupName}</strong>
               <span style={{ color: '#646cff', marginLeft: '8px', fontSize: '0.88em' }}>

@@ -48,7 +48,7 @@ def parse_receipt_image(image_bytes: bytes, filename: str = "receipt.jpg") -> Re
         raise HTTPException(status_code=400, detail="Empty receipt image uploaded")
 
     ollama_api_key = Settings.OLLAMA_API_KEY
-    ollama_host = Settings.OLLAMA_HOST if ollama_api_key else "http://127.0.0.1:11434"
+    ollama_host = Settings.OLLAMA_BASE_URL if ollama_api_key else "http://127.0.0.1:11434"
     model_name = Settings.OCR_MODEL or "gemma4:31b"
 
     # Encode image bytes to base64 string

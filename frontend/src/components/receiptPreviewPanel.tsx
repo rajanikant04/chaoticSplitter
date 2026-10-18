@@ -104,6 +104,7 @@ export function ReceiptPreviewPanel({ imageUrl, receiptData, onRetake }: Receipt
       {/* Expandable Image & Mini Details */}
       {isExpanded && (
         <div
+          className="mobile-stack"
           style={{
             display: 'flex',
             gap: '14px',

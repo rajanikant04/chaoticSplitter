@@ -61,7 +61,7 @@ def generate_split_plan_with_gemma(request: SplitPlanRequest) -> VoiceSplitPlan:
         return _fallback_equal_split(receipt, members, unclaimed_rule, "Split all receipt items equally among all group members.")
 
     ollama_api_key = Settings.OLLAMA_API_KEY
-    ollama_host = Settings.OLLAMA_HOST if ollama_api_key else "http://127.0.0.1:11434"
+    ollama_host = Settings.OLLAMA_BASE_URL if ollama_api_key else "http://127.0.0.1:11434"
     model_name = Settings.OLLAMA_MODEL or "gemma4:31b"
 
     # Format receipt items for prompt

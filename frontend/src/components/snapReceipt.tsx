@@ -266,7 +266,7 @@ export function SnapReceipt({ groupName, members, initialImageUrl, onImageChange
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="responsive-btn-row">
             <button
               type="button"
               onClick={capturePhotoFromStream}
@@ -423,14 +423,14 @@ export function SnapReceipt({ groupName, members, initialImageUrl, onImageChange
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '6px', flexWrap: 'wrap' }}>
+          <div className="responsive-btn-row" style={{ marginTop: '8px' }}>
             <button
               type="button"
               onClick={handleUploadAndExtract}
               disabled={isLoading}
               style={{
-                flex: 1,
-                minWidth: '200px',
+                flex: 2,
+                minWidth: '180px',
                 padding: '0.8em',
                 backgroundColor: '#646cff',
                 color: '#fff',
@@ -484,8 +484,8 @@ export function SnapReceipt({ groupName, members, initialImageUrl, onImageChange
             </span>
           </div>
 
-          <div style={{ marginTop: '0.8rem', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88em', textAlign: 'left' }}>
+          <div className="responsive-table-container">
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88em', textAlign: 'left', minWidth: '300px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #333', color: '#888' }}>
                   <th style={{ padding: '6px' }}>#</th>
@@ -508,6 +508,7 @@ export function SnapReceipt({ groupName, members, initialImageUrl, onImageChange
           </div>
 
           <div
+            className="mobile-stack"
             style={{
               display: 'flex',
               justifyContent: 'space-between',

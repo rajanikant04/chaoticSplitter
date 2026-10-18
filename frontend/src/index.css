@@ -186,30 +186,111 @@ button:focus-visible {
   color: #646cff;
 }
 
-/* Responsive Media Queries */
+/* Responsive Media Queries & Utilities */
+.responsive-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.responsive-btn-row button {
+  flex: 1;
+  min-width: 140px;
+}
+
+.responsive-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0.8rem;
+}
+
+/* Custom Scrollbar for sleek dark mode */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #141414;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem 0.8rem;
+  }
+}
+
 @media (max-width: 640px) {
   #root {
-    padding: 1rem 0.75rem;
+    padding: 0.8rem 0.6rem;
   }
 
   .card {
-    padding: 1.1rem;
-    margin: 1rem 0;
+    padding: 1.1rem 0.9rem;
+    margin: 0.8rem 0;
+  }
+
+  /* Prevent iOS Safari auto-zoom on input focus by maintaining 16px font-size */
+  input, select, textarea {
+    font-size: 16px !important;
   }
 
   .steps-nav {
     grid-template-columns: repeat(2, 1fr);
     gap: 6px;
+    margin: 0.8rem 0;
   }
 
   .step-btn {
-    padding: 0.6em 0.4em;
-    font-size: 0.8rem;
+    padding: 0.65em 0.3em;
+    font-size: 0.82rem;
+  }
+
+  .responsive-btn-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .responsive-btn-row button {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .mobile-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .mobile-full-width {
+    width: 100% !important;
   }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 420px) {
+  #root {
+    padding: 0.6rem 0.4rem;
+  }
+
   .steps-nav {
     grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .step-btn {
+    padding: 0.55em 0.4em;
+    font-size: 0.82rem;
+    text-align: left;
+    padding-left: 0.8rem;
+  }
+
+  .card {
+    padding: 0.9rem 0.75rem;
   }
 }

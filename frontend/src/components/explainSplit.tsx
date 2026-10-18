@@ -220,7 +220,7 @@ export function ExplainSplit({
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="responsive-btn-row">
           {!isRecording ? (
             <button
               type="button"

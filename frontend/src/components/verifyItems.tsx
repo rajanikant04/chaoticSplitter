@@ -1,7 +1,14 @@
+import type { ReceiptData, VoiceSplitPlan } from "../services/api";
+
 interface VerifyItemsProps {
   groupName: string;
   members: string[];
+  receiptData: ReceiptData;
+  splitPlan: VoiceSplitPlan;
+  onPlanConfirmed: (updatedReceipt: ReceiptData, updatedPlan: VoiceSplitPlan) => void;
+  onBackToExplain: () => void;
 }
+
 
 export function VerifyItems({ groupName, members }: VerifyItemsProps) {
   return (
