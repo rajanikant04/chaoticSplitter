@@ -484,53 +484,6 @@ export function SnapReceipt({ groupName, members, initialImageUrl, onImageChange
             </span>
           </div>
 
-          {/* Prior Labs TabPFN Anomaly Alert */}
-          {receiptResult.tabpfn_anomaly_alert && (
-            <div
-              style={{
-                marginTop: '0.8rem',
-                padding: '0.65rem 0.85rem',
-                backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                borderLeft: '3px solid #f59e0b',
-                color: '#fbbf24',
-                fontSize: '0.85em',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '8px',
-              }}
-            >
-              <span style={{ fontSize: '1.1em' }}>🛡️</span>
-              <div>
-                <strong>Prior Labs TabPFN Anomaly Alert:</strong>
-                <div style={{ marginTop: '2px', color: '#fcd34d' }}>
-                  {receiptResult.tabpfn_anomaly_alert}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Prior Labs TabPFN Suggested Tip */}
-          {receiptResult.suggested_tip_percentage && (
-            <div
-              style={{
-                marginTop: '0.5rem',
-                padding: '0.4rem 0.75rem',
-                backgroundColor: 'rgba(100, 108, 255, 0.1)',
-                border: '1px solid rgba(100, 108, 255, 0.3)',
-                color: '#a5b4fc',
-                fontSize: '0.82em',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <span>💡</span>
-              <span>
-                Prior Labs TabPFN Recommended Tip: <strong>{receiptResult.suggested_tip_percentage}%</strong> (based on item count & bill)
-              </span>
-            </div>
-          )}
-
           <div className="responsive-table-container">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88em', textAlign: 'left', minWidth: '300px' }}>
               <thead>

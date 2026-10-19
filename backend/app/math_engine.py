@@ -12,7 +12,6 @@ from app.schemas import (
     ParticipantShare,
     ItemShare,
 )
-from app.services.anomaly_service import audit_receipt_with_tabpfn
 from app.telemetry import trace_span
 
 TWO_PLACES = Decimal("0.01")
@@ -75,8 +74,7 @@ def compute_settlement(
       1. Proportional distribution of taxes, tips, and discounts.
       2. Zero-leakage rounding (sum of individual shares == receipt grand total).
       3. Automatic routing of unclaimed items to all participants.
-      4. Prior Labs TabPFN Anomaly & Outlier validation.
-      5. Distributed performance tracing via Sentry spans.
+      4. Distributed performance tracing via Sentry spans.
     """
     with trace_span("math.settlement", "Zero-Leakage Decimal Settlement Engine", {
         "merchant": receipt.merchant_name,
@@ -185,9 +183,10 @@ def compute_settlement(
         shares = rounded_shares[p]
         final_amt = float(preliminary_totals[p])
 
+        is_payer = p.strip().lower() == (payer_name or "").strip().lower()
         upi_link = None
         qr_code_data_url = None
-        if payer_upi_vpa and p != payer_name and final_amt > 0:
+        if payer_upi_vpa and not is_payer and final_amt > 0:
             upi_link = generate_upi_link(
                 payer_vpa=payer_upi_vpa,
                 payer_name=payer_name,
@@ -210,22 +209,17 @@ def compute_settlement(
             )
         )
 
-        # 6. Verify zero leakage
-        final_sum = sum(p.final_total for p in participant_models)
-        zero_leakage = abs(final_sum - float(receipt.grand_total)) < 0.001
+    # 6. Verify zero leakage across all participants
+    final_sum = sum(p.final_total for p in participant_models)
+    zero_leakage = abs(final_sum - float(receipt.grand_total)) < 0.001
 
-        # 7. Audit receipt with Prior Labs TabPFN
-        audit = audit_receipt_with_tabpfn(receipt, len(participants))
-
-        return SettlementSummary(
-            merchant_name=receipt.merchant_name,
-            currency=receipt.currency,
-            grand_total=float(receipt.grand_total),
-            sum_of_shares=round(final_sum, 2),
-            zero_leakage_verified=zero_leakage,
-            rounding_adjustment_cents=float(rounding_delta),
-            participants=participant_models,
-            unclaimed_items=unclaimed_items,
-            tabpfn_anomaly_alert=audit.get("tabpfn_anomaly_alert"),
-            suggested_tip_percentage=audit.get("suggested_tip_percentage"),
-        )
+    return SettlementSummary(
+        merchant_name=receipt.merchant_name,
+        currency=receipt.currency,
+        grand_total=float(receipt.grand_total),
+        sum_of_shares=round(final_sum, 2),
+        zero_leakage_verified=zero_leakage,
+        rounding_adjustment_cents=float(rounding_delta),
+        participants=participant_models,
+        unclaimed_items=unclaimed_items,
+    )

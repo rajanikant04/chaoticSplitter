@@ -5,7 +5,6 @@ from app.services.stt_service import transcribe_audio_bytes
 from app.services.gemma_service import extract_group_with_gemma
 from app.services.ocr_service import parse_receipt_image
 from app.services.split_service import generate_split_plan_with_gemma
-from app.services.anomaly_service import audit_receipt_with_tabpfn
 from app.math_engine import compute_settlement
 from app.telemetry import init_sentry, trace_span, capture_agent_event
 from app.config import settings
@@ -19,14 +18,12 @@ from app.schemas import (
     SettlementSummary,
 )
 
-from fastapi.middleware.cors import CORSMiddleware
-
 # Initialize Sentry distributed tracing and error monitoring
 init_sentry()
 
 app = FastAPI(
     title="ChaoticSplitter API",
-    description="Multimodal Receipt & Voice Splitter API with Prior Labs TabPFN & Sentry Observability",
+    description="Multimodal Receipt & Voice Splitter API with Gemma 4, ElevenLabs & Sentry Observability",
     version="1.0.0",
 )
 
@@ -49,13 +46,12 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health_check():
-    """Ping endpoint to verify backend, Sentry tracing, and TabPFN status."""
+    """Ping endpoint to verify backend and Sentry tracing status."""
     return {
         "status": "ok",
         "message": "FastAPI Backend is running and connected successfully!",
         "version": "1.0.0",
         "sentry_enabled": bool(settings.SENTRY_DSN),
-        "tabpfn_configured": bool(settings.TABPFN_API_KEY),
     }
 
 @app.get("/api/sentry-test")
@@ -69,11 +65,6 @@ def test_sentry():
         "dsn_configured": bool(settings.SENTRY_DSN),
     }
 
-@app.post("/api/audit/tabpfn")
-async def audit_tabpfn(receipt: ReceiptSchema, num_people: int = 3):
-    """Directly invokes Prior Labs TabPFN Anomaly Guardian & Tip Predictor."""
-    return audit_receipt_with_tabpfn(receipt, num_people=num_people)
-
 @app.post("/api/transcribe", response_model=VoiceTranscribeResponse)
 async def transcribe_voice(file: UploadFile = File(...)):
     """Transcribes audio memo using ElevenLabs Scribe STT."""
@@ -85,7 +76,7 @@ async def setup_group_from_audio(file: UploadFile = File(...)):
     """
     Step 0 audio pipeline:
     1. Transcribes incoming audio with ElevenLabs Scribe STT.
-    2. Sends transcript to Hugging Face Gemma 4 to extract group name & members JSON.
+    2. Sends transcript to Ollama Cloud Gemma 4 to extract group name & members JSON.
     3. Returns structured GroupParseResponse to frontend.
     """
     audio_content = await file.read()

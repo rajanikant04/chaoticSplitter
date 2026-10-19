@@ -20,7 +20,8 @@ export interface VerifyItemsProps {
 // Helper to construct item_id -> list of assigned participant names
 function buildInitialAllocations(
   items: LineItem[] = [],
-  allocations: ItemShare[] = []
+  allocations: ItemShare[] = [],
+  members: string[] = []
 ): Record<number, string[]> {
   const map: Record<number, string[]> = {};
 
@@ -28,12 +29,22 @@ function buildInitialAllocations(
     map[item.item_id] = [];
   });
 
+  // Map lowercase names to exact group member casing
+  const memberLookup: Record<string, string> = {};
+  members.forEach((m) => {
+    if (m && m.trim()) {
+      memberLookup[m.trim().toLowerCase()] = m.trim();
+    }
+  });
+
   allocations.forEach((alloc) => {
     if (!map[alloc.item_id]) {
       map[alloc.item_id] = [];
     }
-    if (!map[alloc.item_id].includes(alloc.person)) {
-      map[alloc.item_id].push(alloc.person);
+    const raw = alloc.person ? alloc.person.trim() : '';
+    const canonical = memberLookup[raw.toLowerCase()] || raw;
+    if (canonical && !map[alloc.item_id].includes(canonical)) {
+      map[alloc.item_id].push(canonical);
     }
   });
 
@@ -66,9 +77,9 @@ export function VerifyItems({
   useEffect(() => {
     if (receiptData?.items) {
       setEditableItems(receiptData.items.map((it) => ({ ...it })));
-      setAllocationsMap(buildInitialAllocations(receiptData.items, splitPlan?.allocations));
+      setAllocationsMap(buildInitialAllocations(receiptData.items, splitPlan?.allocations, members));
     }
-  }, [receiptData, splitPlan]);
+  }, [receiptData, splitPlan, members]);
 
   // Construct updated Receipt and Plan objects
   const getUpdatedData = useCallback(() => {
@@ -173,7 +184,7 @@ export function VerifyItems({
   };
 
   const handleResetToOriginalPlan = () => {
-    setAllocationsMap(buildInitialAllocations(editableItems, splitPlan?.allocations));
+    setAllocationsMap(buildInitialAllocations(editableItems, splitPlan?.allocations, members));
   };
 
   const handleUpdateItemField = (
@@ -351,53 +362,6 @@ export function VerifyItems({
                 </span>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Prior Labs TabPFN Anomaly Alert Banner */}
-        {calculationSummary?.tabpfn_anomaly_alert && (
-          <div
-            style={{
-              marginTop: '0.8rem',
-              padding: '0.65rem 0.85rem',
-              backgroundColor: 'rgba(245, 158, 11, 0.12)',
-              borderLeft: '3px solid #f59e0b',
-              color: '#fbbf24',
-              fontSize: '0.85em',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '8px',
-            }}
-          >
-            <span style={{ fontSize: '1.1em' }}>🛡️</span>
-            <div>
-              <strong>Prior Labs TabPFN Anomaly Alert:</strong>
-              <div style={{ marginTop: '2px', color: '#fcd34d' }}>
-                {calculationSummary.tabpfn_anomaly_alert}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Prior Labs TabPFN Recommended Fair Tip */}
-        {calculationSummary?.suggested_tip_percentage && (
-          <div
-            style={{
-              marginTop: '0.6rem',
-              padding: '0.4rem 0.75rem',
-              backgroundColor: 'rgba(100, 108, 255, 0.1)',
-              border: '1px solid rgba(100, 108, 255, 0.3)',
-              color: '#a5b4fc',
-              fontSize: '0.82em',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <span>💡</span>
-            <span>
-              Prior Labs TabPFN Tip Predictor recommends: <strong>{calculationSummary.suggested_tip_percentage}%</strong> tip for this group & bill size.
-            </span>
           </div>
         )}
 

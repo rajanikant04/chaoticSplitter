@@ -5,7 +5,6 @@ requests
 elevenlabs
 python-dotenv
 python-multipart
-tabpfn
 sentry-sdk
 qrcode
 pillow

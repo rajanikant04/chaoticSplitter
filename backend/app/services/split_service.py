@@ -114,10 +114,18 @@ def generate_split_plan_with_gemma(request: SplitPlanRequest) -> VoiceSplitPlan:
             cleaned = json_match.group(0) if json_match else raw_output
             parsed = json.loads(cleaned)
 
+            # Lookup table to map lowercase names to exact member casing
+            member_lookup = {m.strip().lower(): m.strip() for m in members if m.strip()}
+
             raw_participants = parsed.get("participants", members)
-            participants = [p.strip().capitalize() for p in raw_participants if p and isinstance(p, str)]
+            extracted_participants = [
+                member_lookup.get(str(p).strip().lower(), str(p).strip())
+                for p in raw_participants if p and isinstance(p, (str, int))
+            ]
+            # Ensure all group members are in participants
+            participants = list(dict.fromkeys(members + extracted_participants))
             if not participants:
-                participants = members
+                participants = ["Me"]
 
             # Validate allocations
             valid_item_ids = {it.item_id for it in receipt.items}
@@ -128,7 +136,8 @@ def generate_split_plan_with_gemma(request: SplitPlanRequest) -> VoiceSplitPlan:
             for alloc in raw_allocations:
                 try:
                     item_id = int(alloc.get("item_id"))
-                    person = str(alloc.get("person", "")).strip().capitalize()
+                    raw_person = str(alloc.get("person", "")).strip()
+                    person = member_lookup.get(raw_person.lower(), raw_person)
                     weight = float(alloc.get("weight", 1.0))
                 except (ValueError, TypeError):
                     continue

@@ -15,9 +15,6 @@ class Settings:
     # ElevenLabs (Scribe STT + Voice TTS)
     ELEVENLABS_API_KEY: str = os.getenv("ELEVENLABS_API_KEY", "")
 
-    # Prior Labs (TabPFN-3.5)
-    TABPFN_API_KEY: str = os.getenv("TABPFN_API_KEY", "")
-
     # Sentry Observability
     SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
 

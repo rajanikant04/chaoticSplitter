@@ -17,8 +17,7 @@ class ReceiptSchema(BaseModel):
     service_charge_or_tip: float = Field(default=0.0, description="Service charge, gratuity, or tip")
     discount_total: float = Field(default=0.0, description="Absolute total of any discounts or promo vouchers")
     grand_total: float = Field(description="Final amount paid on the printed receipt")
-    tabpfn_anomaly_alert: Optional[str] = Field(default=None, description="Prior Labs TabPFN outlier warning if detected")
-    suggested_tip_percentage: Optional[float] = Field(default=None, description="Prior Labs TabPFN recommended tip percentage")
+
 
 # --- Stage 2: Splitting Rules & Allocation Models ---
 class ItemShare(BaseModel):
@@ -65,8 +64,7 @@ class SettlementSummary(BaseModel):
     rounding_adjustment_cents: float = Field(default=0.0, description="Delta (+0.01 or -0.01) allocated to highest spender")
     participants: List[ParticipantShare]
     unclaimed_items: List[str] = Field(default_factory=list, description="Items not mentioned and split equally")
-    tabpfn_anomaly_alert: Optional[str] = Field(default=None, description="TabPFN outlier warning if detected")
-    suggested_tip_percentage: Optional[float] = Field(default=None, description="TabPFN recommended fair tip percentage")
+
 
 # --- Group Setup Audio Models ---
 class GroupParseResponse(BaseModel):

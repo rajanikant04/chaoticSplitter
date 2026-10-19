@@ -16,8 +16,6 @@ export interface ReceiptSchema {
   service_charge_or_tip: number;
   discount_total: number;
   grand_total: number;
-  tabpfn_anomaly_alert?: string | null;
-  suggested_tip_percentage?: number | null;
 }
 
 export interface ItemShare {
@@ -53,8 +51,6 @@ export interface SettlementSummary {
   rounding_adjustment_cents: number;
   participants: ParticipantShare[];
   unclaimed_items: string[];
-  tabpfn_anomaly_alert?: string | null;
-  suggested_tip_percentage?: number | null;
 }
 
 export interface SampleDataResponse {
