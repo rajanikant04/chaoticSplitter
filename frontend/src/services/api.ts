@@ -1,5 +1,10 @@
 import axios from 'axios';
 
+// Configure base URL: in production uses VITE_API_BASE_URL; in local dev defaults to '' (proxied by Vite)
+if (import.meta.env.VITE_API_BASE_URL) {
+  axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
+}
+
 // Health check to test frontend-backend integration
 export async function checkBackendHealth() {
   const res = await axios.get('/api/health');
@@ -12,7 +17,7 @@ export interface GroupParseResult {
   transcript: string;
 }
 
-// Stage 0: Sends audio recording to /api/groups which transcribes via ElevenLabs & extracts JSON via Gemma 2
+// Stage 0: Sends audio recording to /api/groups which transcribes via ElevenLabs & extracts JSON via Gemma 4
 export async function parseGroupAudio(audioBlob: Blob): Promise<GroupParseResult> {
   const formData = new FormData();
   formData.append('file', audioBlob, 'group_memo.webm');
@@ -38,6 +43,8 @@ export interface ReceiptData {
   service_charge_or_tip: number;
   discount_total: number;
   grand_total: number;
+  tabpfn_anomaly_alert?: string | null;
+  suggested_tip_percentage?: number | null;
 }
 
 // Upload receipt image to /api/receipts for extraction

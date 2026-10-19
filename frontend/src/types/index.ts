@@ -16,6 +16,8 @@ export interface ReceiptSchema {
   service_charge_or_tip: number;
   discount_total: number;
   grand_total: number;
+  tabpfn_anomaly_alert?: string | null;
+  suggested_tip_percentage?: number | null;
 }
 
 export interface ItemShare {

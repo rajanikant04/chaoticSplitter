@@ -7,6 +7,8 @@ import requests
 from fastapi import HTTPException
 from app.config import Settings
 from app.schemas import ReceiptSchema, LineItem
+from app.services.anomaly_service import audit_receipt_with_tabpfn
+from app.telemetry import trace_span
 
 logger = logging.getLogger("chaoticSplitter.ocr")
 
@@ -119,7 +121,7 @@ def parse_receipt_image(image_bytes: bytes, filename: str = "receipt.jpg") -> Re
         discount = float(parsed.get("discount_total", 0.0) or 0.0)
         grand_total = float(parsed.get("grand_total") or (subtotal + tax_total + tip - discount))
 
-        return ReceiptSchema(
+        receipt_candidate = ReceiptSchema(
             merchant_name=str(parsed.get("merchant_name", "Restaurant")).strip() or "Restaurant",
             currency=str(parsed.get("currency", "INR")).strip() or "INR",
             items=items,
@@ -129,6 +131,13 @@ def parse_receipt_image(image_bytes: bytes, filename: str = "receipt.jpg") -> Re
             discount_total=round(discount, 2),
             grand_total=round(grand_total, 2)
         )
+
+        # Audit receipt through Prior Labs TabPFN Anomaly Guardian
+        audit = audit_receipt_with_tabpfn(receipt_candidate)
+        receipt_candidate.tabpfn_anomaly_alert = audit.get("tabpfn_anomaly_alert")
+        receipt_candidate.suggested_tip_percentage = audit.get("suggested_tip_percentage")
+
+        return receipt_candidate
 
     except requests.exceptions.RequestException as req_err:
         logger.error(f"Failed to communicate with Ollama OCR ({model_name}): {req_err}")

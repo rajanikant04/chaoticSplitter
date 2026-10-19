@@ -12,6 +12,8 @@ from app.schemas import (
     ParticipantShare,
     ItemShare,
 )
+from app.services.anomaly_service import audit_receipt_with_tabpfn
+from app.telemetry import trace_span
 
 TWO_PLACES = Decimal("0.01")
 
@@ -52,7 +54,10 @@ def generate_qr_code_base64(data: str) -> str:
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white")
         buffered = io.BytesIO()
-        img.save(buffered, format="PNG")
+        try:
+            img.save(buffered, format="PNG")
+        except TypeError:
+            img.save(buffered)
         b64_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         return f"data:image/png;base64,{b64_str}"
     except Exception as e:
@@ -70,11 +75,18 @@ def compute_settlement(
       1. Proportional distribution of taxes, tips, and discounts.
       2. Zero-leakage rounding (sum of individual shares == receipt grand total).
       3. Automatic routing of unclaimed items to all participants.
+      4. Prior Labs TabPFN Anomaly & Outlier validation.
+      5. Distributed performance tracing via Sentry spans.
     """
-    # 1. Normalize participants
-    participants = list(dict.fromkeys(plan.participants))
-    if not participants:
-        participants = ["Me"]
+    with trace_span("math.settlement", "Zero-Leakage Decimal Settlement Engine", {
+        "merchant": receipt.merchant_name,
+        "items_count": len(receipt.items),
+        "grand_total": float(receipt.grand_total),
+    }):
+        # 1. Normalize participants
+        participants = list(dict.fromkeys(plan.participants))
+        if not participants:
+            participants = ["Me"]
 
     # Map item_id -> list of allocations
     allocations_by_item: Dict[int, List[ItemShare]] = {}
@@ -198,17 +210,22 @@ def compute_settlement(
             )
         )
 
-    # 6. Verify zero leakage
-    final_sum = sum(p.final_total for p in participant_models)
-    zero_leakage = abs(final_sum - float(receipt.grand_total)) < 0.001
+        # 6. Verify zero leakage
+        final_sum = sum(p.final_total for p in participant_models)
+        zero_leakage = abs(final_sum - float(receipt.grand_total)) < 0.001
 
-    return SettlementSummary(
-        merchant_name=receipt.merchant_name,
-        currency=receipt.currency,
-        grand_total=float(receipt.grand_total),
-        sum_of_shares=round(final_sum, 2),
-        zero_leakage_verified=zero_leakage,
-        rounding_adjustment_cents=float(rounding_delta),
-        participants=participant_models,
-        unclaimed_items=unclaimed_items,
-    )
+        # 7. Audit receipt with Prior Labs TabPFN
+        audit = audit_receipt_with_tabpfn(receipt, len(participants))
+
+        return SettlementSummary(
+            merchant_name=receipt.merchant_name,
+            currency=receipt.currency,
+            grand_total=float(receipt.grand_total),
+            sum_of_shares=round(final_sum, 2),
+            zero_leakage_verified=zero_leakage,
+            rounding_adjustment_cents=float(rounding_delta),
+            participants=participant_models,
+            unclaimed_items=unclaimed_items,
+            tabpfn_anomaly_alert=audit.get("tabpfn_anomaly_alert"),
+            suggested_tip_percentage=audit.get("suggested_tip_percentage"),
+        )

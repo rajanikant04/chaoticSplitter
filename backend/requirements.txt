@@ -8,3 +8,6 @@ python-multipart
 tabpfn
 sentry-sdk
 qrcode
+pillow
+pandas
+numpy

@@ -4,6 +4,7 @@ import re
 from typing import List, Dict, Any
 import requests
 from app.config import Settings
+from app.telemetry import trace_span
 
 logger = logging.getLogger("chaoticSplitter.gemma")
 
@@ -30,62 +31,63 @@ def extract_group_with_gemma(transcript: str) -> Dict[str, Any]:
     Calls Ollama Cloud API with Gemma 4 (gemma4:31b) to extract group_name and members from a transcript.
     Falls back gracefully to clean rule-based extraction if unconfigured or error occurs.
     """
-    if not transcript or not transcript.strip():
-        return {"group_name": "Weekend Hangout", "members": ["Alice", "Bob"]}
+    with trace_span("ai.llm.gemma.group_extract", "Gemma 4 Group Name & Members Extraction", {"transcript_preview": transcript[:80]}):
+        if not transcript or not transcript.strip():
+            return {"group_name": "Weekend Hangout", "members": ["Alice", "Bob"]}
 
-    ollama_api_key = Settings.OLLAMA_API_KEY
-    ollama_host = Settings.OLLAMA_BASE_URL
-    model_name = Settings.OLLAMA_MODEL or "gemma4:31b"
+        ollama_api_key = Settings.OLLAMA_API_KEY
+        ollama_host = Settings.OLLAMA_BASE_URL
+        model_name = Settings.OLLAMA_MODEL or "gemma4:31b"
 
-    try:
-        url = f"{ollama_host.rstrip('/')}/api/chat"
-        headers = {"Content-Type": "application/json"}
-        if ollama_api_key:
-            headers["Authorization"] = f"Bearer {ollama_api_key}"
+        try:
+            url = f"{ollama_host.rstrip('/')}/api/chat"
+            headers = {"Content-Type": "application/json"}
+            if ollama_api_key:
+                headers["Authorization"] = f"Bearer {ollama_api_key}"
 
-        prompt = GROUP_EXTRACTION_PROMPT.format(transcript=transcript)
+            prompt = GROUP_EXTRACTION_PROMPT.format(transcript=transcript)
 
-        payload = {
-            "model": model_name,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt,
+            payload = {
+                "model": model_name,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                "format": "json",
+                "stream": False,
+                "options": {
+                    "temperature": 0.1,
                 }
-            ],
-            "format": "json",
-            "stream": False,
-            "options": {
-                "temperature": 0.1,
             }
-        }
 
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        data = response.json()
-        
-        message = data.get("message", {})
-        raw_output = (message.get("content", "") if isinstance(message, dict) else "").strip() or str(data.get("response", "")).strip()
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            response.raise_for_status()
+            data = response.json()
+            
+            message = data.get("message", {})
+            raw_output = (message.get("content", "") if isinstance(message, dict) else "").strip() or str(data.get("response", "")).strip()
 
-        # Extract JSON block
-        json_match = re.search(r"\{[\s\S]*\}", raw_output)
-        cleaned = json_match.group(0) if json_match else raw_output
+            # Extract JSON block
+            json_match = re.search(r"\{[\s\S]*\}", raw_output)
+            cleaned = json_match.group(0) if json_match else raw_output
 
-        parsed = json.loads(cleaned)
-        group_name = parsed.get("group_name", "Weekend Hangout").strip() or "Weekend Hangout"
-        members = [m.strip().capitalize() for m in parsed.get("members", []) if m and isinstance(m, str)]
-        
-        # Deduplicate preserving order
-        seen = set()
-        unique_members = [m for m in members if not (m.lower() in seen or seen.add(m.lower()))]
+            parsed = json.loads(cleaned)
+            group_name = parsed.get("group_name", "Weekend Hangout").strip() or "Weekend Hangout"
+            members = [m.strip().capitalize() for m in parsed.get("members", []) if m and isinstance(m, str)]
+            
+            # Deduplicate preserving order
+            seen = set()
+            unique_members = [m for m in members if not (m.lower() in seen or seen.add(m.lower()))]
 
-        if len(unique_members) >= 2:
-            return {"group_name": group_name, "members": unique_members}
-    except Exception as e:
-        logger.warning(f"Ollama Cloud extraction failed, falling back to rule-based parser: {e}")
+            if len(unique_members) >= 2:
+                return {"group_name": group_name, "members": unique_members}
+        except Exception as e:
+            logger.warning(f"Ollama Cloud extraction failed, falling back to rule-based parser: {e}")
 
-    # Fallback heuristic parser
-    return _heuristic_group_parser(transcript)
+        # Fallback heuristic parser
+        return _heuristic_group_parser(transcript)
 
 
 def _heuristic_group_parser(text: str) -> Dict[str, Any]:

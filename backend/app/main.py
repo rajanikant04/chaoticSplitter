@@ -1,9 +1,14 @@
+import os
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 from app.services.stt_service import transcribe_audio_bytes
 from app.services.gemma_service import extract_group_with_gemma
 from app.services.ocr_service import parse_receipt_image
 from app.services.split_service import generate_split_plan_with_gemma
+from app.services.anomaly_service import audit_receipt_with_tabpfn
 from app.math_engine import compute_settlement
+from app.telemetry import init_sentry, trace_span, capture_agent_event
+from app.config import settings
 from app.schemas import (
     VoiceTranscribeResponse,
     GroupParseResponse,
@@ -14,21 +19,60 @@ from app.schemas import (
     SettlementSummary,
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
+# Initialize Sentry distributed tracing and error monitoring
+init_sentry()
 
 app = FastAPI(
     title="ChaoticSplitter API",
-    description="Multimodal Receipt & Voice Splitter API",
+    description="Multimodal Receipt & Voice Splitter API with Prior Labs TabPFN & Sentry Observability",
     version="1.0.0",
+)
+
+origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173"
+    ).split(",")
+    if origin.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/api/health")
 def health_check():
-    """Simple ping endpoint to verify frontend-backend integration."""
+    """Ping endpoint to verify backend, Sentry tracing, and TabPFN status."""
     return {
         "status": "ok",
         "message": "FastAPI Backend is running and connected successfully!",
         "version": "1.0.0",
+        "sentry_enabled": bool(settings.SENTRY_DSN),
+        "tabpfn_configured": bool(settings.TABPFN_API_KEY),
     }
+
+@app.get("/api/sentry-test")
+def test_sentry():
+    """Test endpoint to generate a trace span and breadcrumb in Sentry dashboard."""
+    with trace_span("telemetry.test", "Manual Sentry Agent Verification Ping", {"ping": "success"}):
+        capture_agent_event("sentry_agent_ping", {"hackathon": "hacktoberfest", "status": "active"})
+    return {
+        "status": "ok",
+        "message": "Trace span recorded and submitted to Sentry!",
+        "dsn_configured": bool(settings.SENTRY_DSN),
+    }
+
+@app.post("/api/audit/tabpfn")
+async def audit_tabpfn(receipt: ReceiptSchema, num_people: int = 3):
+    """Directly invokes Prior Labs TabPFN Anomaly Guardian & Tip Predictor."""
+    return audit_receipt_with_tabpfn(receipt, num_people=num_people)
 
 @app.post("/api/transcribe", response_model=VoiceTranscribeResponse)
 async def transcribe_voice(file: UploadFile = File(...)):
@@ -41,13 +85,13 @@ async def setup_group_from_audio(file: UploadFile = File(...)):
     """
     Step 0 audio pipeline:
     1. Transcribes incoming audio with ElevenLabs Scribe STT.
-    2. Sends transcript to Hugging Face Gemma 2 to extract group name & members JSON.
+    2. Sends transcript to Hugging Face Gemma 4 to extract group name & members JSON.
     3. Returns structured GroupParseResponse to frontend.
     """
     audio_content = await file.read()
     stt_res = transcribe_audio_bytes(audio_content, filename=file.filename or "memo.wav")
     print("Transcript from Gemma : ", stt_res)
-    # Process transcript through Gemma 2
+    # Process transcript through Gemma 4
     gemma_res = extract_group_with_gemma(stt_res.transcript)
     
     return GroupParseResponse(

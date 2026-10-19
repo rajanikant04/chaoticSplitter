@@ -163,6 +163,11 @@ export function ReceiptPreviewPanel({ imageUrl, receiptData, onRetake }: Receipt
             <div style={{ fontSize: '0.82em', color: '#aaa' }}>
               Keep this receipt in sight while speaking your split instructions in Step 2.
             </div>
+            {receiptData?.tabpfn_anomaly_alert && (
+              <div style={{ fontSize: '0.78em', color: '#fbbf24', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderLeft: '2px solid #f59e0b' }}>
+                🛡️ TabPFN: {receiptData.tabpfn_anomaly_alert}
+              </div>
+            )}
             {receiptData?.items && receiptData.items.length > 0 ? (
               <div
                 style={{

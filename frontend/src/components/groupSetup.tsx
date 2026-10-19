@@ -45,7 +45,7 @@ export function GroupSetup({ onGroupConfirmed }: GroupSetupProps) {
 
   const handleSendAudio = async (audioBlob: Blob) => {
     setIsTranscribing(true);
-    setVoiceNotice('⏳ Transcribing audio with ElevenLabs & extracting with Gemma 2...');
+    setVoiceNotice('⏳ Transcribing audio with ElevenLabs & extracting with Gemma 4...');
     setError('');
 
     try {
